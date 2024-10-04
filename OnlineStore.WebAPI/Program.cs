@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using OnlineStore.Core.Interfaces;
 using OnlineStore.Infrastructure.Data;
+using OnlineStore.Infrastructure.Repositories;
 
 namespace OnlineStore.WebAPI
 {
@@ -12,8 +14,17 @@ namespace OnlineStore.WebAPI
             // Add services to the container.
             builder.Services.AddDbContext<ApplicationContext>(options => 
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            builder.Services.AddScoped<IPizzaRepository>(provider => new PizzaRepository(provider.GetService<ApplicationContext>()));
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddCors(options => {
+                options.AddPolicy("AllowSpecificOrigin", policy =>
+                {
+                    policy.WithOrigins("http://localhost:3000")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
             builder.Services.AddSwaggerGen();
 
             var app = builder.Build();
@@ -29,6 +40,7 @@ namespace OnlineStore.WebAPI
 
             app.UseAuthorization();
 
+            app.UseCors("AllowSpecificOrigin");
 
             app.MapControllers();
 

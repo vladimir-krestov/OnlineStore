@@ -19,5 +19,6 @@ namespace OnlineStore.Infrastructure.Repositories
         {
             return await _dbSet.ToListAsync();
         }
+
     }
 }
