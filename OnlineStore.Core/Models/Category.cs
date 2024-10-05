@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace OnlineStore.Core.Models
 {
-    public class Category
+    public enum PizzaCategory
     {
-        public int Id { get; set; }
-
-        public string Name { get; set; }
+        Usual,
+        Vegeterian,
+        Spicy
     }
 }

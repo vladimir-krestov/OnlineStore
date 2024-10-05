@@ -1,10 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OnlineStore.Core.Interfaces;
+using OnlineStore.Core.Models;
 using OnlineStore.Infrastructure.Data;
 
 namespace OnlineStore.Infrastructure.Repositories
 {
-    public class Repository<T> : IRepository<T> where T : class
+    public class Repository<T> : IRepository<T> where T : DbModel
     {
         private readonly ApplicationContext _context;
         private readonly DbSet<T> _dbSet;
@@ -15,10 +16,23 @@ namespace OnlineStore.Infrastructure.Repositories
             _dbSet = _context.Set<T>();
         }
 
+        public async Task<T?> CreateNewAsync(T model)
+        {
+            var result = await _dbSet.AddAsync(model);
+            
+            await _context.SaveChangesAsync();
+
+            return result.Entity;
+        }
+
         public async Task<IEnumerable<T>> GetAllAsync()
         {
             return await _dbSet.ToListAsync();
         }
 
+        public async Task<T?> GetByIdAsync(int id)
+        {
+            return await _dbSet.FirstOrDefaultAsync(item => item.Id == id);
+        }
     }
 }

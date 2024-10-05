@@ -1,6 +1,6 @@
 ﻿namespace OnlineStore.Core.Models
 {
-    public class ConfiguredPizzaOrderItem
+    public class OrderItem
     {
         public int Id { get; set; }
 

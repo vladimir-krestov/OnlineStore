@@ -1,9 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
-using OnlineStore.Infrastructure.Data;
-using OnlineStore.Infrastructure.Repositories;
 
 namespace OnlineStore.WebAPI.Controllers
 {
@@ -12,9 +9,9 @@ namespace OnlineStore.WebAPI.Controllers
     public class PizzaController : ControllerBase
     {
         private readonly ILogger<PizzaController> _logger;
-        private readonly IPizzaRepository _pizzaRepository;
+        private readonly IRepository<Pizza> _pizzaRepository;
 
-        public PizzaController(ILogger<PizzaController> logger, IPizzaRepository pizzaRepository)
+        public PizzaController(ILogger<PizzaController> logger, IRepository<Pizza> pizzaRepository)
         {
             _logger = logger;
             _pizzaRepository = pizzaRepository;

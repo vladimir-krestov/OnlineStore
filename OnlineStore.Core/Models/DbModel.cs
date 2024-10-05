@@ -1,6 +1,6 @@
 ﻿namespace OnlineStore.Core.Models
 {
-    public class Product
+    public abstract class DbModel
     {
         public int Id { get; set; }
     }

@@ -1,14 +1,12 @@
 ﻿namespace OnlineStore.Core.Models
 {
-    public class Order
+    public class Order : DbModel
     {
-        public int Id { get; set; }
-
         public double Total { get; set; }
 
         public DateTime CreationDate { get; set; }
 
-        public IEnumerable<ConfiguredPizzaOrderItem> ConfiguredPizzaOrderItems { get; set; }
+        public IEnumerable<OrderItem> OrderItems { get; set; }
 
         public int UserId { get; set; }
 

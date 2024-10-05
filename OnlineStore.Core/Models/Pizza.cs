@@ -1,6 +1,8 @@
-﻿namespace OnlineStore.Core.Models
+﻿using OnlineStore.Core.Interfaces;
+
+namespace OnlineStore.Core.Models
 {
-    public class Pizza : Product
+    public class Pizza : DbModel
     {
         public string ImageUrl { get; set; }
 
@@ -10,8 +12,6 @@
 
         public double Price { get; set; }
 
-        // Ref to categories
-        public int CategoryId { get; set; }
-        public Category Category{ get; set; }
+        public PizzaCategory Category { get; set; }
     }
 }
