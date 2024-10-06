@@ -22,8 +22,8 @@ namespace OnlineStore.WebAPI.Controllers
             _userManager = userManager;
         }
 
-        [CustomAuthorization]
-        [HttpGet]
+        [CustomAuthorization(UserRole.Admin)]
+        [HttpGet(Name = "GetAllUsers")]
         public async Task<IEnumerable<UserDto>> GetAll()
         {
             IEnumerable<User?> users = await _userRepository.GetAllAsync();
@@ -31,7 +31,7 @@ namespace OnlineStore.WebAPI.Controllers
             return users.Select(u => new UserDto(u));
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id}", Name = "GetUserById")]
         public async Task<UserDto?> GetById(int id)
         {
             User? user = await _userRepository.GetByIdAsync(id);
@@ -39,7 +39,7 @@ namespace OnlineStore.WebAPI.Controllers
             return new UserDto(user);
         }
 
-        [HttpPost]
+        [HttpPost(Name = "CreateNewUser")]
         public async Task<UserDto?> CreateNewUser([FromBody] UserDto userDto, [FromQuery] string password)
         {
             User? user = await _userRepository.CreateNewAsync(_userManager.CreateUser(userDto, password));

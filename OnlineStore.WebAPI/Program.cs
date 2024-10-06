@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OnlineStore.Core.Interfaces;
@@ -23,28 +23,29 @@ namespace OnlineStore.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
             ConfigurationHelper.Configuration = builder.Configuration;
+            ConfigurationHelper.JwtKey = Environment.GetEnvironmentVariable("OnlineStore_JWT_Key");
 
             // Add services to the container.
             builder.Services.AddDbContext<ApplicationContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
             builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-                }).AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-                        ClockSkew = TimeSpan.Zero // Избегаем временной погрешности для токенов
-                    };
-                });
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigurationHelper.JwtKey)),
+                    ClockSkew = TimeSpan.Zero // Избегаем временной погрешности для токенов
+                };
+            });
             builder.Services.AddScoped<IRepository<Pizza>>(provider => new Repository<Pizza>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<User>>(provider => new Repository<User>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<Order>>(provider => new Repository<Order>(provider.GetService<ApplicationContext>()));

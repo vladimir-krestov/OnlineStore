@@ -17,13 +17,13 @@ namespace OnlineStore.WebAPI.Controllers
             _pizzaRepository = pizzaRepository;
         }
 
-        [HttpGet(Name = "GetAllPizza")]
+        [HttpGet("GetAllPizza", Name = "GetAllPizza")]
         public async Task<IEnumerable<Pizza>> GetAll()
         {
             return await _pizzaRepository.GetAllAsync();
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("GetPizzaById/{id}", Name = "GetPizzaById")]
         public async Task<Pizza?> GetById(int id)
         {
             return await _pizzaRepository.GetByIdAsync(id);

@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using OnlineStore.Core.Models;
+using OnlineStore.WebAPI.Attributes;
+using OnlineStore.WebAPI.Utilities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -25,16 +27,18 @@ namespace OnlineStore.WebAPI.Controllers
         //    return "User created";
         //}
 
-        [HttpPost]
-        public Task<string> SignIn([FromBody]AuthenticationRequest request)
+        [HttpPost("SignIn", Name = "SignIn")]
+        //[Route("SignIn")]
+        public Task<string> SignIn([FromBody] AuthenticationRequest request)
         {
             // Check email and pass
 
             // Provide a JWT token
-            return Task.FromResult(GenerateJwtToken(request.Password));
+            return Task.FromResult(GenerateJwtToken(request.Email));
         }
 
-        [HttpGet]
+        [CustomAuthorization(UserRole.Admin)]
+        [HttpGet(Name = "GenerateKey")]
         public string GenerateKey()
         {
             byte[] salt = new byte[32];
@@ -46,11 +50,11 @@ namespace OnlineStore.WebAPI.Controllers
 
         private string GenerateJwtToken(string email)
         {
-            string? jwtKey = _configuration["Jwt:Key"];
+            string? jwtKey = ConfigurationHelper.JwtKey;
             string? jwtIssuer = _configuration["Jwt:Issuer"];
             string? jwtAudience = _configuration["Jwt:Audience"];
 
-            if(string.IsNullOrEmpty(jwtKey) || string.IsNullOrEmpty(jwtIssuer) || string.IsNullOrEmpty(jwtAudience))
+            if (string.IsNullOrEmpty(jwtKey) || string.IsNullOrEmpty(jwtIssuer) || string.IsNullOrEmpty(jwtAudience))
             {
                 throw new InvalidOperationException($"Missconfiguration of {nameof(jwtKey)} or {nameof(jwtIssuer)} or {nameof(jwtAudience)}.");
             }

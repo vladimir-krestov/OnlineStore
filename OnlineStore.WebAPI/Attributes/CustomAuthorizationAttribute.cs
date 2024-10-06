@@ -12,7 +12,7 @@ using System.Text;
 namespace OnlineStore.WebAPI.Attributes
 {
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
-    public class CustomAuthorizationAttribute : Attribute, IAuthorizationFilter
+    public class CustomAuthorizationAttribute : Attribute, IAsyncAuthorizationFilter
     {
         private readonly UserRole _requiredRole;
 
@@ -25,12 +25,12 @@ namespace OnlineStore.WebAPI.Attributes
             _requiredRole = userRole;
         }
 
-        public async Task OnAuthorization(AuthorizationFilterContext context)
+        public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
         {
             string? token = context.HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
 
             // Check authentication
-            if (token == null || !ValidateToken(token))
+            if (token == null || !ValidateToken(token, context))
             {
                 context.Result = new UnauthorizedResult();
             }
@@ -56,9 +56,9 @@ namespace OnlineStore.WebAPI.Attributes
             }
         }
 
-        private bool ValidateToken(string token)
+        private bool ValidateToken(string token, AuthorizationFilterContext context)
         {
-            string? jwtKey = ConfigurationHelper.GetConfigValue("Jwt:Key");
+            string? jwtKey = ConfigurationHelper.JwtKey;
             string? jwtIssuer = ConfigurationHelper.GetConfigValue("Jwt:Issuer");
             string? jwtAudience = ConfigurationHelper.GetConfigValue("Jwt:Audience");
 
@@ -74,7 +74,7 @@ namespace OnlineStore.WebAPI.Attributes
             {
                 JwtSecurityTokenHandler tokenHandler = new();
                 byte[] key = Encoding.UTF8.GetBytes(jwtKey);
-                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                ClaimsPrincipal principal = tokenHandler.ValidateToken(token, new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
@@ -85,6 +85,8 @@ namespace OnlineStore.WebAPI.Attributes
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ClockSkew = TimeSpan.Zero // Избегаем погрешностей во времени
                 }, out SecurityToken validatedToken);
+
+                context.HttpContext.User = principal;
 
                 return true;
             }
