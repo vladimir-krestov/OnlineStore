@@ -3,6 +3,7 @@ using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Core.Models.Dto;
 using OnlineStore.Core.Services;
+using OnlineStore.WebAPI.Attributes;
 
 namespace OnlineStore.WebAPI.Controllers
 {
@@ -21,6 +22,7 @@ namespace OnlineStore.WebAPI.Controllers
             _userManager = userManager;
         }
 
+        [CustomAuthorization]
         [HttpGet]
         public async Task<IEnumerable<UserDto>> GetAll()
         {
