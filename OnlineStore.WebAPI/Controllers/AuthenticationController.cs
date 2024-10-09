@@ -29,7 +29,7 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost(Name = nameof(Register))]
+        [HttpPost]
         [Route(nameof(Register))]
         public async Task<ActionResult> Register([FromBody] RegistrationRequest request)
         {
@@ -44,7 +44,7 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost(Name = nameof(Login))]
+        [HttpPost]
         [Route(nameof(Login))]
         public async Task<ActionResult> Login([FromBody] AuthenticationRequest request)
         {
@@ -61,7 +61,8 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [Authorize("Admin")]
-        [HttpGet(Name = "GenerateKey")]
+        [HttpGet]
+        [Route(nameof(GenerateKey))]
         public string GenerateKey()
         {
             byte[] salt = new byte[32];

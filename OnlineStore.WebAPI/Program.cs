@@ -123,6 +123,10 @@ namespace OnlineStore.WebAPI
                     });
                 });
             }
+            else
+            {
+                builder.Services.AddSwaggerGen();
+            }
 
             var app = builder.Build();
 

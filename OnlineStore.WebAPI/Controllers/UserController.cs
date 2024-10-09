@@ -1,9 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Core.Models.Dto;
-using OnlineStore.Core.Services;
-using OnlineStore.WebAPI.Attributes;
 
 namespace OnlineStore.WebAPI.Controllers
 {
@@ -22,8 +21,8 @@ namespace OnlineStore.WebAPI.Controllers
             _userManager = userManager;
         }
 
-        [CustomAuthorization(UserRole.Admin)]
-        [HttpGet(Name = "GetAllUsers")]
+        [Authorize("Admin")]
+        [HttpGet]
         public async Task<IEnumerable<UserDto>> GetAll()
         {
             IEnumerable<User?> users = await _userRepository.GetAllAsync();
@@ -31,6 +30,7 @@ namespace OnlineStore.WebAPI.Controllers
             return users.Select(u => new UserDto(u));
         }
 
+        [Authorize("Admin")]
         [HttpGet("{id}", Name = "GetUserById")]
         public async Task<UserDto?> GetById(int id)
         {
@@ -38,6 +38,5 @@ namespace OnlineStore.WebAPI.Controllers
 
             return new UserDto(user);
         }
-
     }
 }

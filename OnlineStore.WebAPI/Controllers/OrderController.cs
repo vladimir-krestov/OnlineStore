@@ -23,7 +23,7 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [Authorize("StoreManager, Admin")]
-        [HttpGet(Name = "GetAllOrders")]
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
         {
             try
@@ -37,7 +37,8 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [Authorize("StoreManager, Admin")]
-        [HttpGet("GetOrdersByUserIdAsync/{id}", Name = "GetOrdersByUserIdAsync")]
+        [HttpGet]
+        [Route("GetOrdersByUserId/{id}")]
         public async Task<ActionResult<List<Order>>> GetOrdersByUserIdAsync(int userId)
         {
             try
@@ -51,7 +52,8 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [Authorize("Customer")]
-        [HttpGet("GetCustomerOrdersAsync", Name = "GetCustomerOrdersAsync")]
+        [HttpGet]
+        [Route("GetCustomerOrders")]
         public async Task<ActionResult<List<Order>>> GetCustomerOrdersAsync()
         {
             try
@@ -71,7 +73,8 @@ namespace OnlineStore.WebAPI.Controllers
         }
 
         [Authorize("Customer")]
-        [HttpPost("AddCustomerOrderItemAsync", Name = "AddCustomerOrderItemAsync")]
+        [HttpPost()]
+        [Route("AddCustomerOrderItem")]
         public async Task<ActionResult<bool>> AddCustomerOrderItemAsync([FromBody] OrderItemDto orderItemDto)
         {
             try
