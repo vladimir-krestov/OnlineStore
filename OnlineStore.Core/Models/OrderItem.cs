@@ -1,8 +1,22 @@
-﻿namespace OnlineStore.Core.Models
+﻿using OnlineStore.Core.Models.Dto;
+
+namespace OnlineStore.Core.Models
 {
-    public class OrderItem
+    public class OrderItem : DbModel
     {
-        public int Id { get; set; }
+        public OrderItem()
+        {
+            
+        }
+
+        public OrderItem(OrderItemDto orderItemDto)
+        {
+            PizzaId = orderItemDto.Pizza.Id;
+            PizzaSize = orderItemDto.PizzaSize;
+            DoughType = orderItemDto.DoughType;
+            PizzaCount = orderItemDto.PizzaCount;
+            OrderNumber = orderItemDto.OrderNumber;
+        }
 
         public int PizzaId { get; set; }
 
@@ -14,7 +28,7 @@
 
         public int PizzaCount { get; set; }
 
-        public int OrderId { get; set; }
+        public string OrderNumber { get; set; }
 
         public Order Order { get; set; }
     }

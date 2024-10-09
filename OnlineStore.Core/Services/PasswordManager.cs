@@ -3,7 +3,7 @@ using System.Text;
 
 namespace OnlineStore.Core.Services
 {
-    internal class PasswordManager
+    public class PasswordManager
     {
         public static string GenerateSalt(int size = 16)
         {

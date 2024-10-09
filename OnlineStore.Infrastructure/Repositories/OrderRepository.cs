@@ -1,0 +1,91 @@
+﻿using Microsoft.EntityFrameworkCore;
+using OnlineStore.Core.Interfaces;
+using OnlineStore.Core.Models;
+using OnlineStore.Core.Models.Dto;
+using OnlineStore.Infrastructure.Data;
+
+namespace OnlineStore.Infrastructure.Repositories
+{
+    public class OrderRepository : Repository<Order>, IOrderRepository
+    {
+        private readonly ApplicationContext _context;
+
+        public OrderRepository(ApplicationContext context) : base(context)
+        {
+            _context = context;
+        }
+
+        public Task<List<Order>> GetOrdersByUserIdAsync(int userId)
+        {
+            return _context.Orders.Where(o => o.UserId == userId).ToListAsync();
+        }
+
+        public async Task<bool> AddOrderAsync(Order order)
+        {
+            _context.Orders.Add(order);
+
+            int saveEntries = await _context.SaveChangesAsync();
+
+            // Returns if operation was successful.
+            return saveEntries > 0;
+        }
+
+        public async Task<bool> AddOrderItemAsync(Order order, OrderItem orderItem)
+        {
+            order.OrderItems.Add(orderItem);
+
+            int saveEntries = await _context.SaveChangesAsync();
+
+            // Returns if operation was successful.
+            return saveEntries > 0;
+        }
+
+        public async Task<bool> SaveOrderItemAsync(OrderItem orderItem)
+        {
+            _context.OrderItems.Add(orderItem);
+
+            int saveEntries = await _context.SaveChangesAsync();
+
+            // Returns if operation was successful.
+            return saveEntries > 0;
+        }
+
+        public async Task<string> GenerateOrderNumber()
+        {
+            const int NumberLength = 8;
+            const int Attempts = 10;
+
+            string? orderNumber = null;
+
+            for (int i = 0; i < Attempts; i++)
+            {
+                string generatedNumber = GenerateNumber(NumberLength);
+
+                if (!(await _context.Orders.AnyAsync(o => o.Number == generatedNumber)))
+                {
+                    orderNumber = generatedNumber;
+                    break;
+                }
+            }
+
+            if (orderNumber is null)
+            {
+                throw new OperationCanceledException("Too many attempts to generate an order unique number.");
+            }
+
+            return orderNumber;
+
+            static string GenerateNumber(int length)
+            {
+                const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+                return new string(Enumerable.Repeat(chars, length)
+                                  .Select(s => s[new Random().Next(s.Length)]).ToArray());
+            }
+        }
+
+        public Task<Order?> GetOrderByNumberAsync(string orderNumber)
+        {
+            return _context.Orders.Include(o => o.OrderItems).FirstOrDefaultAsync(o => o.Number == orderNumber);
+        }
+    }
+}

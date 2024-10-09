@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OnlineStore.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using OnlineStore.Infrastructure.Data;
 namespace OnlineStore.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationContext))]
-    partial class ApplicationContextModelSnapshot : ModelSnapshot
+    [Migration("20241009132457_AddUserRoleModel")]
+    partial class AddUserRoleModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -177,24 +180,14 @@ namespace OnlineStore.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<int?>("UserId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("UserId");
+
                     b.ToTable("UserRoles");
-                });
-
-            modelBuilder.Entity("OnlineStore.Core.Models.UserRoleMapping", b =>
-                {
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("UserRoleMapping");
                 });
 
             modelBuilder.Entity("OnlineStore.Core.Models.Order", b =>
@@ -228,23 +221,11 @@ namespace OnlineStore.Infrastructure.Migrations
                     b.Navigation("Pizza");
                 });
 
-            modelBuilder.Entity("OnlineStore.Core.Models.UserRoleMapping", b =>
+            modelBuilder.Entity("OnlineStore.Core.Models.UserRole", b =>
                 {
-                    b.HasOne("OnlineStore.Core.Models.UserRole", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("OnlineStore.Core.Models.User", "User")
+                    b.HasOne("OnlineStore.Core.Models.User", null)
                         .WithMany("Roles")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
-
-                    b.Navigation("User");
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("OnlineStore.Core.Models.Order", b =>

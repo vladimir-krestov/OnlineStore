@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Infrastructure.Data;
@@ -18,7 +19,7 @@ namespace OnlineStore.Infrastructure.Repositories
 
         public async Task<T?> CreateNewAsync(T model)
         {
-            var result = await _dbSet.AddAsync(model);
+           EntityEntry<T> result = await _dbSet.AddAsync(model);
             
             await _context.SaveChangesAsync();
 

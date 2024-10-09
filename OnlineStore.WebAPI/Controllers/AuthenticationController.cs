@@ -1,12 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using OnlineStore.Core.Models;
-using OnlineStore.WebAPI.Attributes;
 using OnlineStore.WebAPI.Utilities;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using OnlineStore.Core.Interfaces;
+using OnlineStore.Infrastructure.Repositories;
+using OnlineStore.Core.Models.Dto;
 
 namespace OnlineStore.WebAPI.Controllers
 {
@@ -15,29 +20,47 @@ namespace OnlineStore.WebAPI.Controllers
     public class AuthenticationController : ControllerBase
     {
         private readonly IConfiguration _configuration;
+        private readonly IUserRepository _userRepository;
 
-        public AuthenticationController(IConfiguration configuration)
+        public AuthenticationController(IConfiguration configuration, IUserRepository userRepository)
         {
             _configuration = configuration;
+            _userRepository = userRepository;
         }
 
-        //[HttpPost]
-        //public string SignUp([FromBody]AuthenticationRequest request)
-        //{
-        //    return "User created";
-        //}
+        [AllowAnonymous]
+        [HttpPost(Name = nameof(Register))]
+        [Route(nameof(Register))]
+        public async Task<ActionResult> Register([FromBody] RegistrationRequest request)
+        {
+            // to-do: Validation of request data
+            User? user = await _userRepository.RegisterNewUserAsync(request);
+            if (user is not null)
+            {
+                return Ok();
+            }
 
-        [HttpPost("SignIn", Name = "SignIn")]
-        //[Route("SignIn")]
-        public Task<string> SignIn([FromBody] AuthenticationRequest request)
+            return BadRequest("The user can't be registrated.");
+        }
+
+        [AllowAnonymous]
+        [HttpPost(Name = nameof(Login))]
+        [Route(nameof(Login))]
+        public async Task<ActionResult> Login([FromBody] AuthenticationRequest request)
         {
             // Check email and pass
+            User? user = await _userRepository.GetUserByLoginAndPassAsync(request);
+            if (user is null)
+            {
+                return BadRequest("User hasn't been found.");
+            }
 
-            // Provide a JWT token
-            return Task.FromResult(GenerateJwtToken(request.Email));
+            // User is authenticated, generate cookies
+            await GenerateCookie(user);
+            return Ok();
         }
 
-        [CustomAuthorization(UserRole.Admin)]
+        [Authorize("Admin")]
         [HttpGet(Name = "GenerateKey")]
         public string GenerateKey()
         {
@@ -46,6 +69,60 @@ namespace OnlineStore.WebAPI.Controllers
             cryptoProvider.GetBytes(salt);
 
             return Convert.ToBase64String(salt);
+        }
+
+        [Authorize("Admin")]
+        [HttpPatch]
+        [Route("AddUserRole")]
+        public async Task<ActionResult<bool>> AddUserRole([FromQuery] string userId, [FromQuery] string userRoleName)
+        {
+            try
+            {
+                return Ok(await _userRepository.AddUserRoleAsync(userId, userRoleName));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [Authorize("Admin")]
+        [HttpPatch]
+        [Route("RemoveUserRole")]
+        public async Task<ActionResult<bool>> RemoveUserRole([FromQuery] string userId, [FromQuery] string userRoleName)
+        {
+            try
+            {
+                return Ok(await _userRepository.AddUserRoleAsync(userId, userRoleName));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        private async Task GenerateCookie(User user)
+        {
+            List<Claim> claims = new()
+            {
+                new Claim(ClaimTypes.Name, user.Email),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString())
+            };
+
+            foreach (UserRoleMapping userRole in user.Roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, userRole.Role.Name));
+            }
+
+            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var authProperties = new AuthenticationProperties
+            {
+                IsPersistent = false, // Cookie сохраняется после закрытия браузера
+                ExpiresUtc = DateTime.UtcNow.AddMinutes(2)
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
         }
 
         private string GenerateJwtToken(string email)

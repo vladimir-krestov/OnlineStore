@@ -11,18 +11,19 @@ using System.Text;
 
 namespace OnlineStore.WebAPI.Attributes
 {
+    [Obsolete("This attribute was for studying purposes only. Now it is replaces with build-in services.")]
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
     public class CustomAuthorizationAttribute : Attribute, IAsyncAuthorizationFilter
     {
-        private readonly UserRole _requiredRole;
+        private readonly string[] _requiredRoles;
 
         public CustomAuthorizationAttribute()
         {
         }
 
-        public CustomAuthorizationAttribute(UserRole userRole)
+        public CustomAuthorizationAttribute(params string[] userRoles)
         {
-            _requiredRole = userRole;
+            _requiredRoles = userRoles;
         }
 
         public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
@@ -36,7 +37,7 @@ namespace OnlineStore.WebAPI.Attributes
             }
 
             // Check autorization
-            if (_requiredRole == UserRole.None)
+            if (_requiredRoles is null || _requiredRoles.Contains(string.Empty))
             {
                 // This instance of the attribute is available for any role, so it's not necessary to check the user role stored in the database.
                 return;
@@ -48,12 +49,18 @@ namespace OnlineStore.WebAPI.Attributes
 
             // Search a user with this email in the database
             ApplicationContext applicationContext = context.HttpContext.RequestServices.GetService<ApplicationContext>() ?? throw new InvalidOperationException("ApplicationContext is not set correctly to Services.");
-            User? user = await applicationContext.Users.FirstOrDefaultAsync(user => user.Email == userEmail);
+            User? user = await applicationContext.Users
+                .Include(u => u.Roles)
+                .ThenInclude(urm => urm.Role)
+                .FirstOrDefaultAsync(user => user.Email == userEmail);
 
-            if (user is null || user.Role < _requiredRole)
+            if (user is null || _requiredRoles.Any(requredRole => user.Roles.Any(r => r.Role.Name == requredRole)))
             {
                 context.Result = new ForbidResult();
+                return;
             }
+
+            context.HttpContext.User.AddIdentity(new ClaimsIdentity([new Claim("UserId", user.Id.ToString())]));
         }
 
         private bool ValidateToken(string token, AuthorizationFilterContext context)

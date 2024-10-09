@@ -39,12 +39,5 @@ namespace OnlineStore.WebAPI.Controllers
             return new UserDto(user);
         }
 
-        [HttpPost(Name = "CreateNewUser")]
-        public async Task<UserDto?> CreateNewUser([FromBody] UserDto userDto, [FromQuery] string password)
-        {
-            User? user = await _userRepository.CreateNewAsync(_userManager.CreateUser(userDto, password));
-
-            return new UserDto(user);
-        }
     }
 }

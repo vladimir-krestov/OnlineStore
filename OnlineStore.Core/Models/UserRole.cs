@@ -1,10 +1,10 @@
-﻿namespace OnlineStore.Core.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace OnlineStore.Core.Models
 {
-    public enum UserRole
+    public class UserRole : DbModel
     {
-        None = 0,
-        Customer = 1,
-        StoreManager = 2,
-        Admin = 3
+        [MaxLength(20)]
+        public string Name { get; set; }
     }
 }

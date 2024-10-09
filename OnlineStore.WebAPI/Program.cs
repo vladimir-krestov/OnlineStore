@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,32 +24,62 @@ namespace OnlineStore.WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
             ConfigurationHelper.Configuration = builder.Configuration;
-            ConfigurationHelper.JwtKey = Environment.GetEnvironmentVariable("OnlineStore_JWT_Key");
+
+            string? authenticationMethod = builder.Configuration.GetValue<string>("AuthenticationMethod");
+            if (authenticationMethod == "Jwt")
+            {
+                ConfigurationHelper.JwtKey = Environment.GetEnvironmentVariable("OnlineStore_JWT_Key");
+                builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                }).AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigurationHelper.JwtKey)),
+                        ClockSkew = TimeSpan.Zero
+                    };
+                });
+            }
+            else if (authenticationMethod == "Cookies")
+            {
+                builder.Services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                })
+                .AddCookie(options =>
+                {
+                    options.LoginPath = "/Authentication";
+                    options.Cookie.Name = "AuthCookie";
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                    options.ExpireTimeSpan = TimeSpan.FromMinutes(2);
+                    options.SlidingExpiration = true;
+                });
+            }
+            else
+            {
+                throw new NotSupportedException($"This authentication method: {authenticationMethod} is not supported. Check the config file.");
+            }
 
             // Add services to the container.
+            builder.Services.AddHttpContextAccessor();
             builder.Services.AddDbContext<ApplicationContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                    ValidAudience = builder.Configuration["Jwt:Audience"],
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(ConfigurationHelper.JwtKey)),
-                    ClockSkew = TimeSpan.Zero // Избегаем временной погрешности для токенов
-                };
-            });
+
             builder.Services.AddScoped<IRepository<Pizza>>(provider => new Repository<Pizza>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<User>>(provider => new Repository<User>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<Order>>(provider => new Repository<Order>(provider.GetService<ApplicationContext>()));
+            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserManager, UserManager>();
             builder.Services.AddAuthorization();
             builder.Services.AddControllers();
@@ -62,20 +93,22 @@ namespace OnlineStore.WebAPI
                           .AllowAnyMethod();
                 });
             });
-            builder.Services.AddSwaggerGen(options =>
+
+            if (authenticationMethod == "Jwt")
             {
-                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                builder.Services.AddSwaggerGen(options =>
                 {
-                    Description = "Input JWT token: Bearer {token}",
-                    Name = "Authorization",
-                    In = ParameterLocation.Header,
-                    Type = SecuritySchemeType.ApiKey,
-                    Scheme = "Bearer"
-                });
+                    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                    {
+                        Description = "Input JWT token: Bearer {token}",
+                        Name = "Authorization",
+                        In = ParameterLocation.Header,
+                        Type = SecuritySchemeType.ApiKey,
+                        Scheme = "Bearer"
+                    });
 
-
-                options.AddSecurityRequirement(new OpenApiSecurityRequirement
-                {
+                    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                    {
                     {
                         new OpenApiSecurityScheme
                         {
@@ -87,8 +120,9 @@ namespace OnlineStore.WebAPI
                         },
                         Array.Empty<string>()
                     }
+                    });
                 });
-            });
+            }
 
             var app = builder.Build();
 

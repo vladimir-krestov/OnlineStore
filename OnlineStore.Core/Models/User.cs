@@ -19,7 +19,7 @@ namespace OnlineStore.Core.Models
 
 
         // System data
-        public UserRole Role { get; set; }
+        public List<UserRoleMapping> Roles { get; set; } = new();
 
         [MaxLength(44, ErrorMessage = "Password hash must be 44 symbols for the current configuration.")]
         public string PasswordHash { get; set; }
