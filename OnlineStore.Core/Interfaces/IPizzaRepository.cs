@@ -6,5 +6,7 @@ namespace OnlineStore.Core.Interfaces
     public interface IPizzaRepository : IRepository<Pizza>
     {
         Task<bool> CreateNewPizza(PizzaDto pizzaDto);
+
+        Task<Pizza?> GetPizzaByTitleAsync(string title);
     }
 }

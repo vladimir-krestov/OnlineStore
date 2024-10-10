@@ -1,4 +1,5 @@
-﻿using OnlineStore.Core.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Core.Models.Dto;
 using OnlineStore.Infrastructure.Data;
@@ -27,6 +28,11 @@ namespace OnlineStore.Infrastructure.Repositories
 
             await _context.Pizzas.AddAsync(pizza);
             return await _context.SaveChangesAsync() > 0;
+        }
+
+        public Task<Pizza?> GetPizzaByTitleAsync(string title)
+        {
+            return _context.Pizzas.FirstOrDefaultAsync(p => p.Title == title);
         }
     }
 }

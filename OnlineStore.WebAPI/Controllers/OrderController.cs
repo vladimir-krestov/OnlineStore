@@ -13,12 +13,14 @@ namespace OnlineStore.WebAPI.Controllers
     {
         private readonly ILogger<PizzaController> _logger;
         private readonly IOrderRepository _orderRepository;
+        private readonly IPizzaRepository _pizzaRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public OrderController(ILogger<PizzaController> logger, IOrderRepository orderRepository, IHttpContextAccessor httpContextAccessor)
+        public OrderController(ILogger<PizzaController> logger, IOrderRepository orderRepository, IPizzaRepository pizzaRepository, IHttpContextAccessor httpContextAccessor)
         {
             _logger = logger;
             _orderRepository = orderRepository;
+            _pizzaRepository = pizzaRepository;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -134,21 +136,28 @@ namespace OnlineStore.WebAPI.Controllers
             }
         }
 
-        [Authorize(Roles = "Customer")]
+        //[Authorize(Roles = "Customer")]
         [HttpPost()]
         [Route("AddCustomerOrderItem")]
-        public async Task<ActionResult<bool>> AddCustomerOrderItemAsync([FromBody] OrderItemDto orderItemDto)
+        public async Task<ActionResult<string>> AddCustomerOrderItemAsync([FromBody] OrderItemDto orderItemDto)
         {
             try
             {
-                string? userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue("UserId");
-                if (!int.TryParse(userIdClaim, out int userId))
+                int userId = 1;
+                //string? userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue("UserId");
+                //if (!int.TryParse(userIdClaim, out int userId))
+                //{
+                //    return BadRequest(new { message = "Can't get user id." });
+                //}
+
+                Pizza? pizza = await _pizzaRepository.GetPizzaByTitleAsync(orderItemDto.Pizza.Title);
+                if (pizza is null)
                 {
-                    return BadRequest(new { message = "Can't get user id." });
+                    BadRequest(new { message = $"Pizza with title: {orderItemDto.Pizza.Title} hasn't been found." });
                 }
 
                 Order? relatedOrder;
-                OrderItem orderItem = new(orderItemDto);
+                OrderItem orderItem = new(orderItemDto) { Pizza = pizza };
                 if (string.IsNullOrEmpty(orderItemDto.OrderNumber))
                 {
                     // Create new Order entry
@@ -176,7 +185,7 @@ namespace OnlineStore.WebAPI.Controllers
                     await _orderRepository.AddOrderItemAsync(relatedOrder, orderItem);
                 }
 
-                return Ok();
+                return Ok(relatedOrder.Number);
             }
             catch (Exception ex)
             {
