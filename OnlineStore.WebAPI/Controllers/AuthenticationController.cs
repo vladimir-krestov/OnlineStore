@@ -60,7 +60,7 @@ namespace OnlineStore.WebAPI.Controllers
             return Ok();
         }
 
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         [Route(nameof(GenerateKey))]
         public string GenerateKey()
@@ -72,7 +72,7 @@ namespace OnlineStore.WebAPI.Controllers
             return Convert.ToBase64String(salt);
         }
 
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPatch]
         [Route("AddUserRole")]
         public async Task<ActionResult<bool>> AddUserRole([FromQuery] string userId, [FromQuery] string userRoleName)
@@ -87,19 +87,35 @@ namespace OnlineStore.WebAPI.Controllers
             }
         }
 
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPatch]
         [Route("RemoveUserRole")]
         public async Task<ActionResult<bool>> RemoveUserRole([FromQuery] string userId, [FromQuery] string userRoleName)
         {
             try
             {
-                return Ok(await _userRepository.AddUserRoleAsync(userId, userRoleName));
+                return Ok(await _userRepository.RemoveUserRoleAsync(userId, userRoleName));
             }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("AccessDenied")]
+        public ActionResult AccessDenied()
+        {
+            return Forbid();
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        [Route("Unauthorize")]
+        public ActionResult Unauthorize()
+        {
+            return Unauthorized();
         }
 
         private async Task GenerateCookie(User user)

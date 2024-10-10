@@ -15,6 +15,21 @@ namespace OnlineStore.Infrastructure.Repositories
             _context = context;
         }
 
+        public Task<List<Order>> GetOrdersFromPageAsync(int pageNumber, int pageSize)
+        {
+            return _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Pizza)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public Task<int> GetOrdersCountAsync()
+        {
+            return _context.Orders.CountAsync();
+        }
+
         public Task<List<Order>> GetOrdersByUserIdAsync(int userId)
         {
             return _context.Orders.Where(o => o.UserId == userId).ToListAsync();

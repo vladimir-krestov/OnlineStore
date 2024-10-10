@@ -57,7 +57,8 @@ namespace OnlineStore.WebAPI
                 })
                 .AddCookie(options =>
                 {
-                    options.LoginPath = "/Authentication";
+                    options.LoginPath = "/Unauthorize";
+                    options.AccessDeniedPath = "/AccessDenied";
                     options.Cookie.Name = "AuthCookie";
                     options.Cookie.HttpOnly = true;
                     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
@@ -78,6 +79,7 @@ namespace OnlineStore.WebAPI
             builder.Services.AddScoped<IRepository<Pizza>>(provider => new Repository<Pizza>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<User>>(provider => new Repository<User>(provider.GetService<ApplicationContext>()));
             builder.Services.AddScoped<IRepository<Order>>(provider => new Repository<Order>(provider.GetService<ApplicationContext>()));
+            builder.Services.AddScoped<IPizzaRepository, PizzaRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserManager, UserManager>();

@@ -22,13 +22,53 @@ namespace OnlineStore.WebAPI.Controllers
             _httpContextAccessor = httpContextAccessor;
         }
 
-        [Authorize("StoreManager, Admin")]
+        //[Authorize(Roles = "StoreManager, Admin")]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
+        public async Task<ActionResult<List<OrderDto>>> GetOrdersFromPage([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
-                return Ok(await _orderRepository.GetAllAsync());
+                List<Order> orders = await _orderRepository.GetOrdersFromPageAsync(pageNumber, pageSize);
+                List<OrderDto> orderDtos = new List<OrderDto>();
+
+                foreach (var order in orders)
+                {
+                    List<OrderItemDto> orderItemDtos = new();
+
+                    foreach (var item in order.OrderItems)
+                    {
+                        OrderItemDto orderItemDto = new()
+                        {
+                            DoughType = item.DoughType,
+                            OrderNumber = item.OrderNumber,
+                            PizzaCount = item.PizzaCount,
+                            PizzaSize = item.PizzaSize,
+                            Pizza = new PizzaDto()
+                            {
+                                Category = item.Pizza.Category,
+                                Description = item.Pizza.Description,
+                                ImageUrl = item.Pizza.ImageUrl,
+                                Price = item.Pizza.Price,
+                                Title = item.Pizza.Title
+                            }
+                        };
+
+                        orderItemDtos.Add(orderItemDto);
+                    }
+
+                    OrderDto orderDto = new()
+                    {
+                        CreationDate = order.CreationDate,
+                        Number = order.Number,
+                        State = order.State,
+                        Total = order.Total,
+                        OrderItems = orderItemDtos
+                    };
+
+                    orderDtos.Add(orderDto);
+                }
+
+                return Ok(orderDtos);
             }
             catch (Exception ex)
             {
@@ -36,7 +76,29 @@ namespace OnlineStore.WebAPI.Controllers
             }
         }
 
-        [Authorize("StoreManager, Admin")]
+        //[Authorize(Roles = "StoreManager, Admin")]
+        [HttpGet]
+        [Route("GetOrderPageCount")]
+        public async Task<ActionResult<int>> GetOrderPageCountAsync([FromQuery] int pageSize)
+        {
+            try
+            {
+                if (pageSize <= 0 || pageSize > 100)
+                {
+                    return BadRequest(new { message = "Page size is too large, use 1-100 values." });
+                }
+
+                int ordersCount = await _orderRepository.GetOrdersCountAsync();
+
+                return Ok((ordersCount + pageSize - 1) / pageSize); // Like Math.Ceiling
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
+            }
+        }
+
+        [Authorize(Roles = "StoreManager, Admin")]
         [HttpGet]
         [Route("GetOrdersByUserId/{id}")]
         public async Task<ActionResult<List<Order>>> GetOrdersByUserIdAsync(int userId)
@@ -51,7 +113,7 @@ namespace OnlineStore.WebAPI.Controllers
             }
         }
 
-        [Authorize("Customer")]
+        [Authorize(Roles = "Customer")]
         [HttpGet]
         [Route("GetCustomerOrders")]
         public async Task<ActionResult<List<Order>>> GetCustomerOrdersAsync()
@@ -72,7 +134,7 @@ namespace OnlineStore.WebAPI.Controllers
             }
         }
 
-        [Authorize("Customer")]
+        [Authorize(Roles = "Customer")]
         [HttpPost()]
         [Route("AddCustomerOrderItem")]
         public async Task<ActionResult<bool>> AddCustomerOrderItemAsync([FromBody] OrderItemDto orderItemDto)
@@ -121,10 +183,10 @@ namespace OnlineStore.WebAPI.Controllers
                 return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
             }
 
-            
+
         }
 
-        [Authorize("StoreManager, Admin")]
+        [Authorize(Roles = "StoreManager, Admin")]
         [HttpGet("{id}")]
         public async Task<Order?> GetById(int id)
         {

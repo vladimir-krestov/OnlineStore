@@ -21,7 +21,7 @@ namespace OnlineStore.WebAPI.Controllers
             _userManager = userManager;
         }
 
-        [Authorize("Admin")]
+        //[Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IEnumerable<UserDto>> GetAll()
         {
@@ -30,11 +30,15 @@ namespace OnlineStore.WebAPI.Controllers
             return users.Select(u => new UserDto(u));
         }
 
-        [Authorize("Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id}", Name = "GetUserById")]
-        public async Task<UserDto?> GetById(int id)
+        public async Task<ActionResult<UserDto?>> GetById(int id)
         {
             User? user = await _userRepository.GetByIdAsync(id);
+            if(user is null)
+            {
+                return BadRequest("User was not found.");
+            }
 
             return new UserDto(user);
         }

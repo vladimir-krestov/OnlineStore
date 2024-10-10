@@ -11,7 +11,6 @@ namespace OnlineStore.Core.Models
 
         public OrderItem(OrderItemDto orderItemDto)
         {
-            PizzaId = orderItemDto.Pizza.Id;
             PizzaSize = orderItemDto.PizzaSize;
             DoughType = orderItemDto.DoughType;
             PizzaCount = orderItemDto.PizzaCount;
