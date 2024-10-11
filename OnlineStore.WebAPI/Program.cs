@@ -83,6 +83,7 @@ namespace OnlineStore.WebAPI
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserManager, UserManager>();
+            builder.Services.AddSingleton(new SemaphoreSlim(30));
             builder.Services.AddAuthorization();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -129,6 +130,10 @@ namespace OnlineStore.WebAPI
             {
                 builder.Services.AddSwaggerGen();
             }
+
+            builder.Services.AddLogging(options =>
+                options.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
+            );
 
             var app = builder.Build();
 
