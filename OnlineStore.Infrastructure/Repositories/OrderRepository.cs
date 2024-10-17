@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
-using OnlineStore.Core.Models.Dto;
 using OnlineStore.Infrastructure.Data;
 
 namespace OnlineStore.Infrastructure.Repositories
@@ -101,6 +100,11 @@ namespace OnlineStore.Infrastructure.Repositories
         public Task<Order?> GetOrderByNumberAsync(string orderNumber)
         {
             return _context.Orders.Include(o => o.OrderItems).FirstOrDefaultAsync(o => o.Number == orderNumber);
+        }
+
+        public Task<List<OrderItem>> GetOrderItemsByPizzaSizeAsync(PizzaSize size)
+        {
+            return _context.OrderItems.Where(oi => oi.PizzaSize == size).ToListAsync();
         }
     }
 }

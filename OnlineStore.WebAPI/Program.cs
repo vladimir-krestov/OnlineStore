@@ -1,16 +1,23 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OnlineStore.Core.Interfaces;
-using OnlineStore.Core.Models;
 using OnlineStore.Core.Services;
 using OnlineStore.Infrastructure.Data;
-using OnlineStore.Infrastructure.Repositories;
+using OnlineStore.WebAPI.Extensions;
+using OnlineStore.WebAPI.Middlewares;
 using OnlineStore.WebAPI.Utilities;
+using System.Diagnostics;
 using System.Text;
+using NLog;
+using NLog.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Text.Json;
+using OnlineStore.Core.Models.Dto;
 
 namespace OnlineStore.WebAPI
 {
@@ -23,6 +30,8 @@ namespace OnlineStore.WebAPI
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            LogManager.Setup().LoadConfigurationFromFile(string.Concat(Directory.GetCurrentDirectory(), "/Properties/NLog.config"));
+            LogManager.Configuration.Variables["connectionString"] = builder.Configuration.GetConnectionString("DefaultConnection");
             ConfigurationHelper.Configuration = builder.Configuration;
 
             string? authenticationMethod = builder.Configuration.GetValue<string>("AuthenticationMethod");
@@ -72,18 +81,21 @@ namespace OnlineStore.WebAPI
             }
 
             // Add services to the container.
+            builder.Services.AddHealthChecks()
+                .AddAsyncCheck("example_check", () =>
+                    Task.FromResult(HealthCheckResult.Healthy("The check indicates a healthy state.")))
+                .AddDbContextCheck<ApplicationContext>("Database", HealthStatus.Unhealthy)
+                .AddCheck<TimeHealthCheck>("TimeCheck");
+            ;
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddDbContext<ApplicationContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(ConfigurationHelper.Configuration.GetConnectionString("DefaultConnection")));
 
-            builder.Services.AddScoped<IRepository<Pizza>>(provider => new Repository<Pizza>(provider.GetService<ApplicationContext>()));
-            builder.Services.AddScoped<IRepository<User>>(provider => new Repository<User>(provider.GetService<ApplicationContext>()));
-            builder.Services.AddScoped<IRepository<Order>>(provider => new Repository<Order>(provider.GetService<ApplicationContext>()));
-            builder.Services.AddScoped<IPizzaRepository, PizzaRepository>();
-            builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<ILoggerManager, LoggerManager>();
+
+            builder.Services.AddStoreRepositories(); // custom
             builder.Services.AddScoped<IUserManager, UserManager>();
-            builder.Services.AddSingleton(new SemaphoreSlim(30));
+            builder.Services.AddSingleton(new SemaphoreSlim(90));
             builder.Services.AddAuthorization();
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -131,11 +143,25 @@ namespace OnlineStore.WebAPI
                 builder.Services.AddSwaggerGen();
             }
 
-            builder.Services.AddLogging(options =>
-                options.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
-            );
+            builder.Services.AddLogging();
+            builder.Services.AddMemoryCache();
+            builder.Services.AddSingleton<TypedMemoryCache<int, UserDto>>();
+            builder.Services.AddSingleton<FactorialBackgroundService>();
+            builder.Services.AddHostedService(provider => provider.GetRequiredService<FactorialBackgroundService>());
 
             var app = builder.Build();
+
+            app.Use(async (ctx, next) =>
+            {
+                await next.Invoke(ctx);
+
+                Debug.WriteLine("Inside the custom lambda middleware after next.");
+
+                if (ctx.Response.StatusCode == 404)
+                {
+                    ctx.Response.StatusCode = 403;
+                }
+            });
 
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
@@ -144,6 +170,9 @@ namespace OnlineStore.WebAPI
                 app.UseSwaggerUI();
             }
 
+            app.UseRequestPageCheck(); // custom
+            app.UseRequestId(); // custom
+
             app.UseHttpsRedirection();
 
             app.UseAuthentication();
@@ -151,7 +180,29 @@ namespace OnlineStore.WebAPI
 
             app.UseCors("AllowSpecificOrigin");
 
+            app.MapHealthChecks("/healthcheck", new HealthCheckOptions
+            {
+                ResponseWriter = async (context, report) =>
+                {
+                    context.Response.ContentType = "application/json";
+
+                    var result = JsonSerializer.Serialize(new
+                    {
+                        status = report.Status.ToString(),
+                        checks = report.Entries.Select(e => new {
+                            component = e.Key,
+                            status = e.Value.Status.ToString(),
+                            description = e.Value.Description ?? "No description",
+                            duration = e.Value.Duration.TotalMilliseconds + " ms"
+                        }),
+                        totalDuration = report.TotalDuration.TotalMilliseconds + " ms"
+                    });
+
+                    await context.Response.WriteAsync(result);
+                }
+            });
             app.MapControllers();
+            app.UseRequestIdCheck(); // custom
 
             app.Run();
         }

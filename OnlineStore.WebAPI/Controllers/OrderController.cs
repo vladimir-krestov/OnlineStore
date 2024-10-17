@@ -19,13 +19,13 @@ namespace OnlineStore.WebAPI.Controllers
         private static DateTime endTime;
 
         private readonly SemaphoreSlim _semaphore;
-        private readonly ILogger<PizzaController> _logger;
+        private readonly ILoggerManager _logger;
         private readonly IOrderRepository _orderRepository;
         private readonly IPizzaRepository _pizzaRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public OrderController(
-            ILogger<PizzaController> logger,
+            ILoggerManager logger,
             IOrderRepository orderRepository,
             IPizzaRepository pizzaRepository,
             IHttpContextAccessor httpContextAccessor,
@@ -38,12 +38,14 @@ namespace OnlineStore.WebAPI.Controllers
             _semaphore = semaphore;
         }
 
-        //[Authorize(Roles = "StoreManager, Admin")]
+        //[Authorize(Roles = "StoreManager,Admin")]
         [HttpGet]
         public async Task<ActionResult<List<OrderDto>>> GetOrdersFromPage([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
+                _logger.LogInfo($"Trying to get an order list filtered by pages, where {nameof(pageNumber)}:{pageNumber}, {nameof(pageSize)}:{pageSize}");
+
                 List<Order> orders = await _orderRepository.GetOrdersFromPageAsync(pageNumber, pageSize);
                 List<OrderDto> orderDtos = new List<OrderDto>();
 
@@ -84,7 +86,30 @@ namespace OnlineStore.WebAPI.Controllers
                     orderDtos.Add(orderDto);
                 }
 
+                _logger.LogError("Test error");
+
                 return Ok(orderDtos);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
+            }
+        }
+
+        // TMP
+        [HttpGet]
+        [Route("GetOrderItemsByPizzaSize")]
+        public async Task<ActionResult<double>> GetOrderItemsByPizzaSizeAsync([FromQuery] PizzaSize size)
+        {
+            try
+            {
+                Stopwatch sw = Stopwatch.StartNew();
+                List<OrderItem> orderItems = await _orderRepository.GetOrderItemsByPizzaSizeAsync(size);
+                sw.Stop();
+
+                double time = sw.Elapsed.TotalMilliseconds;
+
+                return Ok(time);
             }
             catch (Exception ex)
             {
@@ -224,8 +249,6 @@ namespace OnlineStore.WebAPI.Controllers
                     await _orderRepository.AddOrderItemAsync(relatedOrder, orderItem);
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(1));
-
                 return Ok(relatedOrder.Number);
             }
             catch (Exception ex)
@@ -240,9 +263,9 @@ namespace OnlineStore.WebAPI.Controllers
 
         [Authorize(Roles = "StoreManager, Admin")]
         [HttpGet("{id}")]
-        public async Task<Order?> GetById(int id)
+        public async Task<ActionResult<Order?>> GetById(int id)
         {
-            return await _orderRepository.GetByIdAsync(id);
+            return Ok(await _orderRepository.GetByIdAsync(id));
         }
     }
 }
