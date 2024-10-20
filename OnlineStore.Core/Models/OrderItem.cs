@@ -1,4 +1,6 @@
 ﻿using OnlineStore.Core.Models.Dto;
+using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OnlineStore.Core.Models
 {
@@ -6,7 +8,7 @@ namespace OnlineStore.Core.Models
     {
         public OrderItem()
         {
-            
+
         }
 
         public OrderItem(OrderItemDto orderItemDto)
@@ -30,5 +32,9 @@ namespace OnlineStore.Core.Models
         public string OrderNumber { get; set; }
 
         public Order Order { get; set; }
+
+        [AllowNull]
+        [MaxLength(100)]
+        public string AdditionalInfo { get; set; }
     }
 }

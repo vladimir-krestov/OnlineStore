@@ -99,17 +99,30 @@ namespace OnlineStore.WebAPI.Controllers
         // TMP
         [HttpGet]
         [Route("GetOrderItemsByPizzaSize")]
-        public async Task<ActionResult<double>> GetOrderItemsByPizzaSizeAsync([FromQuery] PizzaSize size)
+        public async Task<ActionResult<int>> GetOrderItemsByPizzaSizeAsync([FromQuery] PizzaSize size)
         {
             try
             {
-                Stopwatch sw = Stopwatch.StartNew();
-                List<OrderItem> orderItems = await _orderRepository.GetOrderItemsByPizzaSizeAsync(size);
-                sw.Stop();
+                List<OrderItem> orders = await _orderRepository.GetOrderItemsByPizzaSizeAsync(size);
 
-                double time = sw.Elapsed.TotalMilliseconds;
+                return Ok(orders.Count);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
+            }
+        }
 
-                return Ok(time);
+        // TMP
+        [HttpGet]
+        [Route("GetOrderItemsByAdditionalInfo")]
+        public async Task<ActionResult<int>> GetOrderItemsByAdditionalInfoAsync([FromQuery] string info, [FromQuery] int size)
+        {
+            try
+            {
+                List<OrderItem> orders = await _orderRepository.GetOrderItemsByAdditionalInfoAsync(info, size);
+
+                return Ok(orders.Count);
             }
             catch (Exception ex)
             {

@@ -2,6 +2,7 @@
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Infrastructure.Data;
+using System.Linq.Expressions;
 
 namespace OnlineStore.Infrastructure.Repositories
 {
@@ -105,6 +106,15 @@ namespace OnlineStore.Infrastructure.Repositories
         public Task<List<OrderItem>> GetOrderItemsByPizzaSizeAsync(PizzaSize size)
         {
             return _context.OrderItems.Where(oi => oi.PizzaSize == size).ToListAsync();
+        }
+
+        public Task<List<OrderItem>> GetOrderItemsByAdditionalInfoAsync(string info, int size)
+        {
+            Expression<Func<OrderItem, bool>> filter = size > 0
+                ? oi => oi.AdditionalInfo == info && oi.PizzaSize == (PizzaSize)size
+                : oi => oi.AdditionalInfo == info;
+
+            return _context.OrderItems.Where(filter).ToListAsync();
         }
     }
 }
