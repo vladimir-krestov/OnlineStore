@@ -16,5 +16,9 @@ namespace OnlineStore.Core.Interfaces
         Task<bool> AddOrderItemAsync(Order order, OrderItem orderItem);
 
         Task<string> GenerateOrderNumber();
+
+        Task<List<OrderItem>> GetOrderItemsByPizzaSizeAsync(PizzaSize size);
+
+        Task<List<OrderItem>> GetOrderItemsByAdditionalInfoAsync(string info, int size);
     }
 }

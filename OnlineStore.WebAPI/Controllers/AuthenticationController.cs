@@ -12,6 +12,7 @@ using System.Text;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Infrastructure.Repositories;
 using OnlineStore.Core.Models.Dto;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace OnlineStore.WebAPI.Controllers
 {
@@ -21,11 +22,13 @@ namespace OnlineStore.WebAPI.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly IUserRepository _userRepository;
+        private readonly HealthCheckService _healthCheckService;
 
-        public AuthenticationController(IConfiguration configuration, IUserRepository userRepository)
+        public AuthenticationController(IConfiguration configuration, IUserRepository userRepository, HealthCheckService healthCheckService)
         {
             _configuration = configuration;
             _userRepository = userRepository;
+            _healthCheckService = healthCheckService;
         }
 
         [AllowAnonymous]

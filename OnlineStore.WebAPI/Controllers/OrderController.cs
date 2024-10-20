@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OnlineStore.Core.Interfaces;
 using OnlineStore.Core.Models;
 using OnlineStore.Core.Models.Dto;
+using System.Diagnostics;
 using System.Security.Claims;
 
 namespace OnlineStore.WebAPI.Controllers
@@ -11,25 +12,40 @@ namespace OnlineStore.WebAPI.Controllers
     [Route("[controller]")]
     public class OrderController : ControllerBase
     {
-        private readonly ILogger<PizzaController> _logger;
+        private static int _connectionCounter = 0;
+
+        private static object _locker = new();
+        private static DateTime startTime;
+        private static DateTime endTime;
+
+        private readonly SemaphoreSlim _semaphore;
+        private readonly ILoggerManager _logger;
         private readonly IOrderRepository _orderRepository;
         private readonly IPizzaRepository _pizzaRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public OrderController(ILogger<PizzaController> logger, IOrderRepository orderRepository, IPizzaRepository pizzaRepository, IHttpContextAccessor httpContextAccessor)
+        public OrderController(
+            ILoggerManager logger,
+            IOrderRepository orderRepository,
+            IPizzaRepository pizzaRepository,
+            IHttpContextAccessor httpContextAccessor,
+            SemaphoreSlim semaphore)
         {
             _logger = logger;
             _orderRepository = orderRepository;
             _pizzaRepository = pizzaRepository;
             _httpContextAccessor = httpContextAccessor;
+            _semaphore = semaphore;
         }
 
-        //[Authorize(Roles = "StoreManager, Admin")]
+        //[Authorize(Roles = "StoreManager,Admin")]
         [HttpGet]
         public async Task<ActionResult<List<OrderDto>>> GetOrdersFromPage([FromQuery] int pageNumber, [FromQuery] int pageSize)
         {
             try
             {
+                _logger.LogInfo($"Trying to get an order list filtered by pages, where {nameof(pageNumber)}:{pageNumber}, {nameof(pageSize)}:{pageSize}");
+
                 List<Order> orders = await _orderRepository.GetOrdersFromPageAsync(pageNumber, pageSize);
                 List<OrderDto> orderDtos = new List<OrderDto>();
 
@@ -70,7 +86,43 @@ namespace OnlineStore.WebAPI.Controllers
                     orderDtos.Add(orderDto);
                 }
 
+                _logger.LogError("Test error");
+
                 return Ok(orderDtos);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
+            }
+        }
+
+        // TMP
+        [HttpGet]
+        [Route("GetOrderItemsByPizzaSize")]
+        public async Task<ActionResult<int>> GetOrderItemsByPizzaSizeAsync([FromQuery] PizzaSize size)
+        {
+            try
+            {
+                List<OrderItem> orders = await _orderRepository.GetOrderItemsByPizzaSizeAsync(size);
+
+                return Ok(orders.Count);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
+            }
+        }
+
+        // TMP
+        [HttpGet]
+        [Route("GetOrderItemsByAdditionalInfo")]
+        public async Task<ActionResult<int>> GetOrderItemsByAdditionalInfoAsync([FromQuery] string info, [FromQuery] int size)
+        {
+            try
+            {
+                List<OrderItem> orders = await _orderRepository.GetOrderItemsByAdditionalInfoAsync(info, size);
+
+                return Ok(orders.Count);
             }
             catch (Exception ex)
             {
@@ -141,9 +193,31 @@ namespace OnlineStore.WebAPI.Controllers
         [Route("AddCustomerOrderItem")]
         public async Task<ActionResult<string>> AddCustomerOrderItemAsync([FromBody] OrderItemDto orderItemDto)
         {
+            lock (_locker)
+            {
+                Debug.WriteLine(++_connectionCounter);
+
+                if (_connectionCounter % 100 == 1)
+                {
+                    startTime = DateTime.UtcNow;
+                    Debug.WriteLine($"Start time: {startTime}");
+                }
+
+                if (_connectionCounter % 100 == 0)
+                {
+                    endTime = DateTime.UtcNow;
+                    Debug.WriteLine($"End time: {endTime}");
+                    double seconds = (endTime - startTime).TotalSeconds;
+                    Debug.WriteLine(seconds);
+                }
+            }
+
+            await _semaphore.WaitAsync(); // Limits 30 connections at the same time, comes from DI
+
             try
             {
-                int userId = 1;
+                // todo - return back
+                int userId = 2;
                 //string? userIdClaim = _httpContextAccessor.HttpContext?.User.FindFirstValue("UserId");
                 //if (!int.TryParse(userIdClaim, out int userId))
                 //{
@@ -158,6 +232,7 @@ namespace OnlineStore.WebAPI.Controllers
 
                 Order? relatedOrder;
                 OrderItem orderItem = new(orderItemDto) { Pizza = pizza };
+                double orderItemTotal = orderItem.Pizza.Price * orderItem.PizzaCount;
                 if (string.IsNullOrEmpty(orderItemDto.OrderNumber))
                 {
                     // Create new Order entry
@@ -167,7 +242,8 @@ namespace OnlineStore.WebAPI.Controllers
                         OrderItems = new List<OrderItem>() { orderItem },
                         CreationDate = DateTime.UtcNow,
                         State = OrderState.Created,
-                        UserId = userId
+                        UserId = userId,
+                        Total = orderItemTotal
                     };
 
                     await _orderRepository.AddOrderAsync(relatedOrder);
@@ -181,6 +257,7 @@ namespace OnlineStore.WebAPI.Controllers
                     }
 
                     // Save order
+                    relatedOrder.Total += orderItemTotal;
                     relatedOrder.OrderItems.Add(orderItem);
                     await _orderRepository.AddOrderItemAsync(relatedOrder, orderItem);
                 }
@@ -191,15 +268,17 @@ namespace OnlineStore.WebAPI.Controllers
             {
                 return BadRequest(new { message = "Error when getting orders.", error = ex.Message });
             }
-
-
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         [Authorize(Roles = "StoreManager, Admin")]
         [HttpGet("{id}")]
-        public async Task<Order?> GetById(int id)
+        public async Task<ActionResult<Order?>> GetById(int id)
         {
-            return await _orderRepository.GetByIdAsync(id);
+            return Ok(await _orderRepository.GetByIdAsync(id));
         }
     }
 }
